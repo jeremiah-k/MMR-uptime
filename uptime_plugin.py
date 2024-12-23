@@ -1,6 +1,7 @@
 import time
 import asyncio
 from plugins.base_plugin import BasePlugin
+from matrix_utils import connect_matrix, join_matrix_room
 
 class Plugin(BasePlugin):
     plugin_name = "uptime"
@@ -110,11 +111,22 @@ class Plugin(BasePlugin):
 
         return "\n".join(report_lines)
 
+    async def ensure_alert_room_joined(self):
+        """
+        Attempts to join alert_room_id if specified, so we can send messages even if
+        we haven't joined that room yet.
+        """
+        if self.alert_room_id:
+            matrix_client = await connect_matrix()
+            await join_matrix_room(matrix_client, self.alert_room_id)
+
     def start(self):
         """
         If 'tracked_nodes' is non-empty, spins up an async task to check
-        node downtime every 10 seconds. 
+        node downtime every 10 seconds. Also ensures we join the alert_room_id if set.
         """
+        asyncio.create_task(self.ensure_alert_room_joined())
+
         if not self.tracked_nodes:
             return
         asyncio.create_task(self.monitor_nodes())
