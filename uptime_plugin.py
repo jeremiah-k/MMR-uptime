@@ -13,7 +13,7 @@ class Plugin(BasePlugin):
         super().__init__(*args, **kwargs)
         self.node_last_seen = {}
         self.tracked_nodes = self.config.get("tracked_nodes", [])
-        self.offline_threshold = self.config.get("offline_threshold", 300)
+        self.offline_threshold = self.config.get("offline_threshold", 1800)
         self.alert_sent = set()
 
     async def handle_meshtastic_message(self, packet, formatted_message, longname, meshnet_name):
