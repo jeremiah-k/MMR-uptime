@@ -22,7 +22,7 @@ Add the following configuration to your config.yaml for the uptime plugin:
 ```yaml
 ...
 community-plugins:
-  uptime_plugin:
+  uptime:
     active: true
     repository: https://github.com/leow149/MMR-uptime.git
     tag: main
