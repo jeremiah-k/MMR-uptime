@@ -11,4 +11,5 @@ community-plugins:
     tracked_nodes:
       - "!1234abcd"
     offline_threshold: 1800
+    alert_room_id: "!my_alert_room_id:example.org"
 ```
