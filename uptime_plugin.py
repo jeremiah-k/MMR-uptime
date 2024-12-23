@@ -17,7 +17,7 @@ class Plugin(BasePlugin):
         self.offline_threshold = self.config.get("offline_threshold", 1800)
         self.alert_sent = set()
 
-        # New setting for which Matrix room to send OFFLINE alerts to
+        # Setting for which Matrix room to send OFFLINE alerts to
         self.alert_room_id = self.config.get("alert_room_id", None)
         if not self.alert_room_id:
             self.logger.warning(f"No alert_room_id specified in config for plugin '{self.plugin_name}'. "
@@ -77,7 +77,8 @@ class Plugin(BasePlugin):
         """
         Responds with a current uptime report if "!uptime" is in the message.
         """
-        if "!uptime" in full_message:
+        # Directly check for the !uptime command.
+        if full_message.strip().startswith("!uptime"):
             report = self.generate_uptime_report()
             try:
                 await self.send_matrix_message(
