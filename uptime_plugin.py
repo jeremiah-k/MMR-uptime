@@ -1,5 +1,6 @@
 import time
 import asyncio
+import re
 from plugins.base_plugin import BasePlugin
 from matrix_utils import connect_matrix, join_matrix_room
 
@@ -77,8 +78,9 @@ class Plugin(BasePlugin):
         """
         Responds with a current uptime report if "!uptime" is in the message.
         """
-        # Directly check for the !uptime command.
-        if full_message.strip().startswith("!uptime"):
+        # Use a regular expression to check for !uptime at the beginning of the message,
+        # allowing for variations in whitespace.
+        if re.match(r"^\s*!uptime\s*$", full_message):
             report = self.generate_uptime_report()
             try:
                 await self.send_matrix_message(
