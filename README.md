@@ -7,6 +7,7 @@ community-plugins:
   uptime_plugin:
     active: true
     repository: https://github.com/leow149/MMR-uptime.git
+    tag: main
     tracked_nodes:
       - "!1234abcd"
     offline_threshold: 1800
