@@ -1,6 +1,7 @@
 import time
 import asyncio
 from plugins.base_plugin import BasePlugin
+from matrix_utils import connect_matrix, join_matrix_room, bot_command
 
 class Plugin(BasePlugin):
     plugin_name = "uptime"
@@ -16,7 +17,17 @@ class Plugin(BasePlugin):
         self.offline_threshold = self.config.get("offline_threshold", 1800)
         self.alert_sent = set()
 
+        # Setting for which Matrix room to send OFFLINE alerts to
+        self.alert_room_id = self.config.get("alert_room_id", None)
+        if not self.alert_room_id:
+            self.logger.warning(f"No alert_room_id specified in config for plugin '{self.plugin_name}'. "
+                                "Offline alerts will not be sent to Matrix.")
+
     async def handle_meshtastic_message(self, packet, formatted_message, longname, meshnet_name):
+        """
+        Records last-seen time for any tracked node that sends a packet.
+        Clears 'alert_sent' if the node is back online after being offline.
+        """
         try:
             node_id = packet.get("fromId")
             if not isinstance(node_id, str):
@@ -31,8 +42,18 @@ class Plugin(BasePlugin):
             return False
 
     async def monitor_nodes(self):
+        """
+        Periodically checks tracked nodes for downtime. If a node
+        exceeds 'offline_threshold' seconds, an alert is sent to Matrix.
+        """
         while True:
             current_time = time.time()
+
+            # Only proceed if alert_room_id is configured
+            if not self.alert_room_id:
+                await asyncio.sleep(10)
+                continue
+
             for node_id in self.tracked_nodes:
                 last_seen = self.node_last_seen.get(node_id, None)
                 if last_seen is None:
@@ -43,16 +64,24 @@ class Plugin(BasePlugin):
                     self.alert_sent.add(node_id)
                     try:
                         await self.send_matrix_message(
-                            None,
+                            self.alert_room_id,
                             f"Alert: Node {node_id} is OFFLINE for {downtime:.2f} seconds!",
                             formatted=False
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        self.logger.error(f"Failed sending offline alert for node {node_id} to Matrix: {e}")
+
             await asyncio.sleep(10)
 
+    def get_matrix_commands(self):
+        # Return a list with the command name to make it discoverable by !help
+        return [self.plugin_name]
+
     async def handle_room_message(self, room, event, full_message):
-        if "!uptime" in full_message:
+        """
+        Responds with a current uptime report if the message is directed at the bot and contains "!uptime".
+        """
+        if bot_command("uptime", event):
             report = self.generate_uptime_report()
             try:
                 await self.send_matrix_message(
@@ -60,12 +89,16 @@ class Plugin(BasePlugin):
                     report,
                     formatted=False
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                self.logger.error(f"Failed sending uptime report to Matrix: {e}")
             return True
         return False
 
     def generate_uptime_report(self):
+        """
+        Builds a multiline report of each tracked node's status
+        (ONLINE vs. OFFLINE).
+        """
         current_time = time.time()
         report_lines = []
 
@@ -82,10 +115,28 @@ class Plugin(BasePlugin):
 
         return "\n".join(report_lines)
 
+    async def ensure_alert_room_joined(self):
+        """
+        Attempts to join alert_room_id if specified, so we can send messages even if
+        we haven't joined that room yet.
+        """
+        if self.alert_room_id:
+            matrix_client = await connect_matrix()
+            await join_matrix_room(matrix_client, self.alert_room_id)
+
     def start(self):
+        """
+        If 'tracked_nodes' is non-empty, spins up an async task to check
+        node downtime every 10 seconds. Also ensures we join the alert_room_id if set.
+        """
+        asyncio.create_task(self.ensure_alert_room_joined())
+
         if not self.tracked_nodes:
             return
         asyncio.create_task(self.monitor_nodes())
 
     def stop(self):
+        """
+        Cleanup or teardown logic if needed. 
+        """
         pass
