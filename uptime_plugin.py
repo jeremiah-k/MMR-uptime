@@ -1,7 +1,7 @@
 import time
 import asyncio
-from plugins.base_plugin import BasePlugin
-from matrix_utils import connect_matrix, join_matrix_room, bot_command
+from mmrelay.plugins.base_plugin import BasePlugin
+from mmrelay.matrix_utils import matrix_client, join_matrix_room, bot_command
 
 class Plugin(BasePlugin):
     plugin_name = "uptime"
@@ -11,6 +11,8 @@ class Plugin(BasePlugin):
         return "Tracks uptime of specific nodes, sends alerts when they exceed the downtime threshold, and responds to the !uptime command."
 
     def __init__(self, *args, **kwargs):
+        # Set plugin_name before calling super().__init__()
+        self.plugin_name = "uptime"
         super().__init__(*args, **kwargs)
         self.node_last_seen = {}
         self.tracked_nodes = self.config.get("tracked_nodes", [])
@@ -120,8 +122,7 @@ class Plugin(BasePlugin):
         Attempts to join alert_room_id if specified, so we can send messages even if
         we haven't joined that room yet.
         """
-        if self.alert_room_id:
-            matrix_client = await connect_matrix()
+        if self.alert_room_id and matrix_client is not None:
             await join_matrix_room(matrix_client, self.alert_room_id)
 
     def start(self):
@@ -137,6 +138,6 @@ class Plugin(BasePlugin):
 
     def stop(self):
         """
-        Cleanup or teardown logic if needed. 
+        Cleanup or teardown logic if needed.
         """
         pass
