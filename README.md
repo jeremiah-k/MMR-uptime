@@ -25,7 +25,7 @@ community-plugins:
   uptime:
     active: true
     repository: https://github.com/leow149/MMR-uptime.git
-    tag: main
+    branch: main
     tracked_nodes:
       - "!node_id_1"
       - "!node_id_2"
